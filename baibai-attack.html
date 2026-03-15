@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<!-- saved from url=(0050)file:///Users/naoya/Downloads/baibai-attack_4.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>バイバイアタック！倍率バトル</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+:root { --bg1:#0d1117; --bg2:#161b22; }
+body { background:var(--bg1); color:white; font-family:'Hiragino Sans','Helvetica Neue',sans-serif; min-height:100vh; overflow-x:hidden; user-select:none; }
+
+/* OPTION BAR */
+.option-bar { display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 14px; background:#0a0d12; border-bottom:1px solid #2a2a3a; }
+.option-label { font-size:0.78rem; color:#555; }
+.toggle-wrap { display:flex; align-items:center; gap:8px; }
+.toggle { position:relative; width:46px; height:26px; background:#2a2a3a; border-radius:13px; cursor:pointer; transition:background 0.3s; border:none; flex-shrink:0; }
+.toggle.on { background:linear-gradient(135deg,#FF6B35,#e03131); }
+.toggle::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:white; transition:transform 0.3s; box-shadow:0 1px 4px rgba(0,0,0,0.4); }
+.toggle.on::after { transform:translateX(20px); }
+.toggle-text { font-weight:700; font-size:0.78rem; color:#555; transition:color 0.3s; }
+.toggle-text.on { color:#FF6B35; }
+
+/* OPENING */
+#opening { position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:linear-gradient(160deg,#0a0e1a 0%,#1a0a2e 50%,#0a0e1a 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+.op-icon { font-size:3.5rem; line-height:1; }
+.op-title { font-weight:900; font-size:clamp(1.6rem,7vw,2.4rem); background:linear-gradient(90deg,#FFD43B,#FF6B35,#FF6B6B); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-align:center; line-height:1.35; }
+.op-sub { font-size:0.85rem; color:#666; }
+
+
+#turnToast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) translateX(-110%); font-weight:900; font-size:clamp(1rem,4.5vw,1.4rem); padding:6px 18px; border-radius:20px; white-space:nowrap; z-index:36; pointer-events:none; opacity:0; letter-spacing:1px; }
+#turnToast.hero { background:rgba(30,22,0,0.95); border:2px solid #FFD43B; color:#FFD43B; box-shadow:0 0 20px rgba(255,212,59,0.4); }
+#turnToast.enemy { background:rgba(30,0,0,0.95); border:2px solid #FF6B6B; color:#FF6B6B; box-shadow:0 0 20px rgba(255,107,107,0.4); }
+@keyframes toastFlash { 0%{transform:translate(-50%,-50%) translateX(-110%);opacity:0} 25%{transform:translate(-50%,-50%) translateX(4%);opacity:1} 65%{transform:translate(-50%,-50%) translateX(0);opacity:1} 100%{transform:translate(-50%,-50%) translateX(110%);opacity:0} }
+
+/* BATTLE FIELD */
+.battle-field { position:relative; width:100%; height:200px; overflow:hidden; background:linear-gradient(180deg,#0a0e1a 0%,#1a1035 40%,#2a1f0a 100%); border-bottom:3px solid #2a2a3a; }
+.stars { position:absolute; inset:0; background-image:radial-gradient(1px 1px at 10% 15%,rgba(255,255,255,0.6) 0%,transparent 100%),radial-gradient(1px 1px at 30% 8%,rgba(255,255,255,0.5) 0%,transparent 100%),radial-gradient(1px 1px at 55% 20%,rgba(255,255,255,0.7) 0%,transparent 100%),radial-gradient(1px 1px at 75% 5%,rgba(255,255,255,0.4) 0%,transparent 100%),radial-gradient(1px 1px at 90% 18%,rgba(255,255,255,0.6) 0%,transparent 100%); }
+.ground { position:absolute; bottom:0; left:0; right:0; height:44px; background:linear-gradient(180deg,#2d1f0a 0%,#1a1208 100%); border-top:2px solid #3d2f1a; }
+#hero { position:absolute; bottom:42px; left:14%; font-size:3.2rem; line-height:1; filter:drop-shadow(0 0 12px rgba(255,212,59,0.6)); z-index:10; }
+#hero.idle { animation:heroIdle 2s ease-in-out infinite; }
+#hero.charge { animation:heroCharge var(--charge-dur,0.25s) ease-in-out infinite; }
+#hero.attack { animation:heroAttack 0.5s ease-out forwards; }
+#hero.hurt { animation:heroHurt 0.5s ease-out forwards; }
+#enemy { position:absolute; bottom:42px; right:8%; line-height:1; z-index:10; transform-origin:bottom center; }
+#enemy.idle { animation:enemyIdle 3s ease-in-out infinite; }
+#enemy.hit { animation:enemyHit 0.5s ease-out forwards; }
+#enemy.dead { animation:enemyDead 0.8s ease-out forwards; }
+#enemy.echarge { animation:enemyCharge 0.28s ease-in-out infinite; }
+#enemy.eattack { animation:enemyAttack 0.52s ease-out forwards; }
+
+/* ORACLE PANEL */
+#oraclePanel { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) translateX(-120%); z-index:35; pointer-events:none; display:none; flex-direction:column; align-items:center; gap:4px; background:rgba(8,2,18,0.88); border:2px solid rgba(170,90,255,0.7); border-radius:18px; padding:10px 20px; box-shadow:0 0 24px rgba(160,80,255,0.45); backdrop-filter:blur(6px); white-space:nowrap; }
+#oraclePanel.active { display:flex; }
+.op-label { font-weight:700; font-size:0.72rem; color:#b08ae0; letter-spacing:1px; }
+#oracleNum { font-weight:900; font-size:clamp(2.4rem,10vw,3.4rem); color:#FFD700; line-height:1; text-shadow:0 0 16px rgba(255,215,0,0.9),0 0 32px rgba(255,160,0,0.6); transition:text-shadow 0.2s; }
+#oracleNum.hit { color:#FFD700; text-shadow:0 0 24px rgba(255,215,0,1),0 0 48px rgba(255,160,0,0.9); }
+#oracleNum.miss { color:#ff4444; text-shadow:0 0 12px rgba(255,50,50,0.7); }
+@keyframes oracleSlideIn { 0%{transform:translate(-50%,-50%) translateX(-120%);opacity:0} 60%{transform:translate(-50%,-50%) translateX(6%);opacity:1} 100%{transform:translate(-50%,-50%) translateX(0);opacity:1} }
+@keyframes oracleSlideOut { 0%{transform:translate(-50%,-50%) translateX(0);opacity:1} 100%{transform:translate(-50%,-50%) translateX(120%);opacity:0} }
+
+/* 神のお告げ達成フラッシュ */
+#oracleFlash { position:fixed; inset:0; pointer-events:none; z-index:200; opacity:0; background:radial-gradient(ellipse,rgba(105,219,124,0.5),rgba(50,180,80,0.2) 60%,transparent 80%); }
+@keyframes oracleFlashAnim { 0%{opacity:0} 20%{opacity:1} 100%{opacity:0} }
+
+/* 神のお告げ：f-result divine */
+.f-result { color:#FF6B6B; text-shadow:0 0 10px rgba(255,107,107,0.5); font-size:clamp(1.2rem,5vw,1.8rem); transition:color 0.4s,text-shadow 0.4s; }
+.f-result.divine { color:#FFD700; text-shadow:0 0 8px rgba(255,215,0,1),0 0 20px rgba(255,180,0,0.9),0 0 40px rgba(255,140,0,0.6); animation:divineFlicker 1.2s ease-in-out infinite; }
+@keyframes divineFlicker { 0%,100%{text-shadow:0 0 8px rgba(255,215,0,1),0 0 20px rgba(255,180,0,0.9)} 50%{text-shadow:0 0 16px rgba(255,255,100,1),0 0 36px rgba(255,215,0,1),0 0 60px rgba(255,160,0,0.8)} }
+
+/* 敵の計算式 */
+#enemyFormulaPop { position:absolute; top:10%; left:50%; transform:translateX(-50%); background:rgba(15,0,0,0.94); border:2px solid #c92a2a; border-radius:14px; padding:8px 18px; font-weight:900; white-space:nowrap; z-index:40; pointer-events:none; opacity:0; display:flex; align-items:center; gap:7px; box-shadow:0 0 28px rgba(200,0,0,0.5); }
+.efp-label-top { position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:0.68rem; color:#FF6B6B; white-space:nowrap; letter-spacing:1px; }
+.efp-base { color:#FF6B6B; font-size:1.3rem; }
+.efp-x { color:#555; font-size:1rem; }
+.efp-mult { background:linear-gradient(135deg,#c92a2a,#7b1010); color:white; border-radius:6px; padding:1px 10px; font-size:1.3rem; box-shadow:0 2px 0 #3a0000; }
+.efp-eq { color:#555; font-size:1rem; }
+.efp-result { color:#FF4444; font-size:1.65rem; text-shadow:0 0 14px rgba(255,60,60,0.8); min-width:2ch; text-align:center; }
+.efp-dmg { color:#ff9999; font-size:0.65rem; align-self:flex-end; padding-bottom:2px; }
+
+/* 吹き出し */
+#speechBubble { position:absolute; bottom:calc(100% + 6px); left:10%; background:white; color:#1a1a2e; font-weight:900; font-size:clamp(0.72rem,3vw,0.92rem); padding:6px 12px; border-radius:14px; border-bottom-left-radius:3px; white-space:nowrap; opacity:0; pointer-events:none; z-index:40; box-shadow:0 4px 14px rgba(0,0,0,0.5); transform-origin:bottom left; }
+#speechBubble::after { content:''; position:absolute; bottom:-8px; left:14px; border:8px solid transparent; border-top-color:white; border-bottom:none; }
+#enemySpeech { position:absolute; bottom:calc(100% + 6px); right:8%; background:#2a0000; color:#FF9999; border:1px solid #c92a2a; font-weight:900; font-size:clamp(0.72rem,3vw,0.92rem); padding:6px 12px; border-radius:14px; border-bottom-right-radius:3px; white-space:nowrap; opacity:0; pointer-events:none; z-index:40; box-shadow:0 4px 14px rgba(200,0,0,0.4); transform-origin:bottom right; }
+#enemySpeech::after { content:''; position:absolute; bottom:-8px; right:14px; border:8px solid transparent; border-top-color:#2a0000; border-bottom:none; }
+
+/* particles / rings */
+#particles { position:absolute; inset:0; pointer-events:none; z-index:20; overflow:hidden; }
+#rings { position:absolute; inset:0; pointer-events:none; z-index:18; overflow:hidden; }
+#attackEffect { position:absolute; font-weight:900; font-size:2.5rem; color:#FFD43B; text-shadow:0 0 20px rgba(255,212,59,0.8); white-space:nowrap; z-index:30; pointer-events:none; opacity:0; top:40%; left:50%; transform:translate(-50%,-50%); }
+#dmgNumber { position:absolute; font-weight:900; font-size:2.8rem; color:#FF6B6B; text-shadow:0 0 20px rgba(255,50,50,0.9),2px 2px 0 #000; z-index:30; pointer-events:none; opacity:0; top:28%; right:8%; }
+#heroDmgNumber { position:absolute; font-weight:900; font-size:2.2rem; color:#FF8888; text-shadow:0 0 16px rgba(255,80,80,0.8),2px 2px 0 #000; z-index:30; pointer-events:none; opacity:0; top:28%; left:6%; }
+#slash { position:absolute; right:20%; top:20%; width:80px; height:80px; opacity:0; z-index:25; pointer-events:none; }
+#screenFlash { position:absolute; inset:0; pointer-events:none; z-index:50; opacity:0; }
+
+/* 神様「神」 */
+#godChar { position:absolute; font-weight:900; font-size:5rem; line-height:1; top:-100px; left:50%; transform:translateX(-50%); z-index:45; pointer-events:none; opacity:0; color:#FFD700; text-shadow:0 0 20px rgba(255,215,0,1),0 0 50px rgba(255,160,0,0.9),0 0 90px rgba(255,100,0,0.6); -webkit-text-stroke:2px rgba(255,180,0,0.6); }
+
+/* HP BARS */
+.hp-section { padding:6px 12px; background:var(--bg2); border-bottom:2px solid #2a2a3a; display:flex; flex-direction:column; gap:4px; }
+.hp-row { display:flex; align-items:center; gap:6px; }
+.hp-name { font-size:0.68rem; color:#888; font-weight:700; white-space:nowrap; min-width:90px; overflow:hidden; text-overflow:ellipsis; }
+.hp-bar-bg { flex:1; height:11px; background:#1a1a2a; border-radius:6px; overflow:hidden; border:1px solid #2a2a3a; }
+.hp-bar-fill { height:100%; border-radius:6px; transition:width 0.5s ease; position:relative; }
+.hp-bar-fill::after { content:''; position:absolute; top:2px; left:4px; right:4px; height:2px; border-radius:2px; background:rgba(255,255,255,0.3); }
+.hp-hero-fill { background:linear-gradient(90deg,#69DB7C,#2b9348); }
+.hp-enemy-fill { background:linear-gradient(90deg,#FF6B6B,#c92a2a); }
+.hp-num { font-size:0.62rem; color:#555; white-space:nowrap; min-width:52px; text-align:right; }
+
+/* CONTROLS */
+.controls { padding:10px 14px; background:var(--bg2); }
+.weapon-label { font-weight:900; font-size:0.82rem; color:#888; margin-bottom:10px; text-align:center; letter-spacing:1px; }
+.mult-label { font-weight:900; font-size:0.82rem; color:#888; margin:10px 0 7px; text-align:center; letter-spacing:1px; }
+.mult-row { display:flex; justify-content:center; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+.mult-btn { font-weight:900; font-size:0.9rem; width:40px; height:40px; border-radius:10px; border:2px solid #2a2a3a; background:#111520; color:#555; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
+.mult-btn.active { background:linear-gradient(135deg,#CC5DE8,#862e9c); border-color:#CC5DE8; color:white; box-shadow:0 0 14px rgba(204,93,232,0.45),0 3px 0 #4a1060; transform:scale(1.1); }
+.mult-btn:active { transform:scale(0.93); }
+.weapon-row { display:flex; gap:8px; margin-bottom:12px; }
+.weapon-card { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 6px 8px; border-radius:14px; border:2px solid #2a2a3a; background:#111520; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; }
+.weapon-card.active { border-color:var(--wc,#FFD43B); background:var(--wbg,#1a1800); box-shadow:0 0 18px var(--wglow,rgba(255,212,59,0.35)),0 4px 0 var(--wshadow,#8b6a00); transform:translateY(-3px) scale(1.03); }
+.weapon-card:active { transform:scale(0.96); }
+.weapon-card.disabled-card { opacity:0.35; cursor:not-allowed; }
+.weapon-icon { font-size:2.2rem; line-height:1; margin-bottom:4px; }
+.weapon-name { font-weight:700; font-size:0.72rem; color:#aaa; margin-bottom:3px; }
+.weapon-uses { position:absolute; top:5px; right:6px; font-weight:900; font-size:0.68rem; background:#1a0808; color:#FF6B6B; border:1px solid #c92a2a; border-radius:8px; padding:1px 6px; white-space:nowrap; }
+.weapon-uses.full { background:#0a1a08; color:#69DB7C; border-color:#2b9348; }
+.weapon-uses.warn { background:#1a1000; color:#FFD43B; border-color:#8b6a00; }
+.weapon-uses.empty { background:#1a0808; color:#555; border-color:#3a2a2a; }
+.formula-wrap { background:#0d1117; border-radius:12px; padding:8px 14px; margin-bottom:10px; border:1px solid #2a2a3a; text-align:center; min-height:72px; display:flex; flex-direction:column; justify-content:center; }
+.formula-text { font-weight:900; font-size:clamp(1rem,4.5vw,1.5rem); display:flex; align-items:center; justify-content:center; gap:7px; flex-wrap:wrap; }
+.f-base { transition:color 0.2s; }
+.f-x { color:#555; font-size:1.1rem; }
+.f-mult-val { background:linear-gradient(135deg,#CC5DE8,#862e9c); color:white; padding:1px 10px; border-radius:7px; box-shadow:0 2px 0 #4a1060; }
+.f-eq { color:#555; }
+.formula-hint { font-size:0.72rem; color:#555; margin-top:3px; display:none; }
+.btn-attack { width:100%; padding:14px; font-weight:900; font-size:clamp(1rem,4.5vw,1.35rem); background:linear-gradient(135deg,#FF6B35 0%,#e03131 100%); color:white; border:none; border-radius:14px; box-shadow:0 5px 0 #8b1a00,0 0 18px rgba(255,107,53,0.3); cursor:pointer; letter-spacing:1px; transition:transform 0.1s,box-shadow 0.1s; position:relative; overflow:hidden; }
+.btn-attack::before { content:''; position:absolute; top:0; left:-100%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent); animation:shimmer 2.5s infinite; }
+.btn-attack:active:not(:disabled) { transform:translateY(4px); box-shadow:0 1px 0 #8b1a00; }
+.btn-attack:disabled { background:#2a2a3a; box-shadow:none; color:#444; cursor:not-allowed; }
+.btn-attack:disabled::before { display:none; }
+.enemy-waiting { width:100%; padding:14px; font-weight:900; font-size:clamp(0.9rem,4vw,1.15rem); background:#150505; color:#FF6B6B; border:2px solid #3a0e0e; border-radius:14px; text-align:center; letter-spacing:1px; animation:wPulse 0.9s ease-in-out infinite; }
+.btn-reset { width:100%; padding:9px; font-weight:900; font-size:0.85rem; background:transparent; color:#444; border:2px solid #2a2a3a; border-radius:12px; cursor:pointer; margin-top:7px; transition:all 0.2s; }
+.btn-reset:active { background:#1a1a2a; }
+
+/* LOG */
+.log-section { padding:10px 14px 28px; background:var(--bg1); }
+.log-title { font-size:0.7rem; color:#444; margin-bottom:5px; text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+.log-list { display:flex; flex-direction:column; gap:3px; }
+.log-item { font-size:0.78rem; color:#555; padding:5px 10px; background:#0d1117; border-radius:7px; border-left:3px solid #2a2a3a; animation:fadeSlide 0.3s ease; }
+.log-item.hero-log { color:#FFD43B; border-left-color:#FF6B35; background:#1a1208; }
+.log-item.enemy-log { color:#FF9999; border-left-color:#c92a2a; background:#1a0808; }
+
+/* OVERLAYS */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:100; flex-direction:column; align-items:center; justify-content:center; padding:20px; animation:fadeIn 0.4s ease; }
+.overlay.show { display:flex; }
+.overlay-icon { font-size:4.5rem; margin-bottom:10px; }
+.overlay-title { font-weight:900; font-size:clamp(1.8rem,7vw,2.8rem); text-align:center; margin-bottom:14px; }
+.overlay-title.win { background:linear-gradient(90deg,#FFD43B,#FF6B35); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.overlay-title.lose { color:#FF6B6B; }
+.overlay-sub { color:#777; font-size:0.85rem; text-align:center; margin-bottom:24px; line-height:1.75; white-space:pre-line; }
+.btn-ol { font-weight:900; font-size:1rem; padding:12px 26px; border:none; border-radius:14px; cursor:pointer; margin:5px; }
+.btn-ol.primary { background:linear-gradient(135deg,#FFD43B,#FF6B35); color:white; box-shadow:0 4px 0 #8b5200; }
+.btn-ol.secondary { background:#2a2a3a; color:#999; box-shadow:0 4px 0 #111; }
+
+/* KEYFRAMES */
+@keyframes heroIdle { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes heroCharge { 0%{transform:translateX(0) scale(1)} 50%{transform:translateX(-6px) scale(0.95,1.05)} 100%{transform:translateX(0) scale(1)} }
+@keyframes heroAttack { 0%{left:14%} 40%{left:46%;transform:scale(1.3)} 60%{left:46%;transform:scale(1.1)} 100%{left:14%;transform:scale(1)} }
+@keyframes heroHurt { 0%{transform:translateX(0)} 15%{transform:translateX(-18px) scale(0.9,1.1)} 35%{transform:translateX(10px) scale(1.08,0.94)} 55%{transform:translateX(-10px)} 75%{transform:translateX(6px)} 100%{transform:translateX(0) scale(1)} }
+@keyframes enemyIdle { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-3px) scale(1.01)} }
+@keyframes enemyHit { 0%{transform:translateX(0) scale(1)} 20%{transform:translateX(28px) scale(0.88,1.12)} 40%{transform:translateX(-14px) scale(1.1,0.9)} 60%{transform:translateX(18px) scale(0.95)} 80%{transform:translateX(-9px)} 100%{transform:translateX(0) scale(1)} }
+@keyframes enemyDead { 0%{transform:scale(1) rotate(0deg);opacity:1} 40%{transform:scale(1.2) rotate(-10deg);opacity:0.8} 100%{transform:scale(0) rotate(30deg) translateY(50px);opacity:0} }
+@keyframes enemyCharge { 0%{transform:translateX(0) scale(1)} 50%{transform:translateX(7px) scale(1.06,0.94)} 100%{transform:translateX(0) scale(1)} }
+@keyframes enemyAttack { 0%{right:8%} 38%{right:54%;transform:scale(1.28)} 56%{right:54%;transform:scale(1.1)} 100%{right:8%;transform:scale(1)} }
+@keyframes dmgFloat { 0%{opacity:1;transform:translateY(0) scale(0.5)} 18%{opacity:1;transform:translateY(-8px) scale(1.35)} 78%{opacity:1;transform:translateY(-48px) scale(1)} 100%{opacity:0;transform:translateY(-75px) scale(0.8)} }
+@keyframes atkShow { 0%{opacity:0;transform:translate(-50%,-50%) scale(0.3)} 30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)} 60%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(0.8)} }
+@keyframes slashAnim { 0%{opacity:0;transform:scale(0) rotate(-45deg)} 30%{opacity:1;transform:scale(1.5) rotate(-10deg)} 70%{opacity:0.8;transform:scale(1.2) rotate(0deg)} 100%{opacity:0;transform:scale(0.5) rotate(20deg)} }
+@keyframes fieldShake { 0%,100%{transform:translate(0,0)} 10%{transform:translate(var(--sx),var(--sy))} 20%{transform:translate(calc(var(--sx)*-1.2),calc(var(--sy)*0.5))} 30%{transform:translate(calc(var(--sx)*0.8),calc(var(--sy)*-1))} 40%{transform:translate(calc(var(--sx)*-0.6),calc(var(--sy)*0.8))} 50%{transform:translate(calc(var(--sx)*1.1),calc(var(--sy)*-0.4))} 60%{transform:translate(calc(var(--sx)*-0.4),calc(var(--sy)*0.6))} 70%{transform:translate(calc(var(--sx)*0.7),calc(var(--sy)*-0.3))} 80%{transform:translate(calc(var(--sx)*-0.3),0)} 90%{transform:translate(calc(var(--sx)*0.2),0)} }
+@keyframes particleFly { 0%{transform:translate(0,0) scale(var(--ps,1)) rotate(0deg);opacity:1} 60%{opacity:0.8} 100%{transform:translate(var(--dx),var(--dy)) scale(0) rotate(var(--pr,180deg));opacity:0} }
+@keyframes ringExpand { 0%{transform:translate(-50%,-50%) scale(0);opacity:0.9} 70%{opacity:0.4} 100%{transform:translate(-50%,-50%) scale(var(--rs,3));opacity:0} }
+@keyframes screenFlashAnim { 0%{opacity:0} 15%{opacity:var(--sfo,0.4)} 100%{opacity:0} }
+@keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
+@keyframes fadeSlide { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes wPulse { 0%,100%{opacity:0.65} 50%{opacity:1} }
+@keyframes efpIn { 0%{opacity:0;transform:translateX(-50%) scale(0.3) translateY(12px)} 20%{opacity:1;transform:translateX(-50%) scale(1.06) translateY(-2px)} 32%{opacity:1;transform:translateX(-50%) scale(1)} 88%{opacity:1;transform:translateX(-50%) scale(1)} 100%{opacity:0;transform:translateX(-50%) scale(0.88) translateY(-6px)} }
+@keyframes resultPop { 0%{transform:scale(1)} 45%{transform:scale(1.5)} 100%{transform:scale(1)} }
+@keyframes bubbleShow { 0%{opacity:0;transform:scale(0.4)} 28%{opacity:1;transform:scale(1.08)} 50%{opacity:1;transform:scale(1)} 80%{opacity:1} 100%{opacity:0;transform:scale(0.9)} }
+@keyframes godDescend { 0%{top:-100px;opacity:0;transform:translateX(-50%) scale(0.2) rotate(-20deg)} 25%{top:5%;opacity:1;transform:translateX(-50%) scale(1.3) rotate(4deg);filter:brightness(2.5)} 45%{top:8%;opacity:1;transform:translateX(-50%) scale(1) rotate(-2deg);filter:brightness(1.5)} 72%{top:8%;opacity:1;transform:translateX(-50%) scale(1.05) rotate(0deg);filter:brightness(1.8)} 88%{top:8%;opacity:0.8;transform:translateX(-50%) scale(1)} 100%{top:-100px;opacity:0;transform:translateX(-50%) scale(0.5) rotate(10deg)} }
+@keyframes kamiPulse { 0%,100%{text-shadow:0 0 20px rgba(255,215,0,1),0 0 50px rgba(255,160,0,0.9)} 50%{text-shadow:0 0 40px rgba(255,255,100,1),0 0 80px rgba(255,215,0,1)} }
+@keyframes holyBeam { 0%{opacity:0;transform:translateX(-50%) scaleY(0)} 20%{opacity:0.8;transform:translateX(-50%) scaleY(1)} 80%{opacity:0.6;transform:translateX(-50%) scaleY(1)} 100%{opacity:0;transform:translateX(-50%) scaleY(0)} }
+@keyframes oracleHit { 0%{transform:scale(1)} 40%{transform:scale(1.5)} 100%{transform:scale(1)} }
+</style>
+</head>
+<body>
+
+<!-- オープニング画面 -->
+<div id="opening" style="transition: opacity 0.6s; opacity: 0; display: none;">
+  <div class="op-icon">⚔️</div>
+  <div class="op-title">バイバイアタック！<br>倍率バトル</div>
+  <div class="op-sub">倍率をえらんで必殺技を決めよう</div>
+</div>
+
+<!-- OPTION -->
+<div class="option-bar">
+  <span class="option-label">⚙️</span>
+  <div class="toggle-wrap">
+    <button class="toggle" id="turnToggle" onclick="toggleTurnMode()"></button>
+    <span class="toggle-text" id="turnToggleLbl">交代バトル OFF</span>
+  </div>
+  <div class="toggle-wrap">
+    <button class="toggle on" id="oracleToggle" onclick="toggleOracleMode()"></button>
+    <span class="toggle-text on" id="oracleToggleLbl">神のお告げ ON</span>
+  </div>
+</div>
+
+<!-- BATTLE FIELD -->
+<div class="battle-field" id="battleField">
+  <div class="stars"></div>
+  <div class="ground"></div>
+  <div id="hero" class="idle">🦸</div>
+  <div id="enemy" class="idle" style="font-size:4.5rem">👹</div>
+  <div id="particles"></div>
+  <div id="rings"></div>
+  <div id="attackEffect"></div>
+  <div id="dmgNumber"></div>
+  <div id="heroDmgNumber"></div>
+  <svg id="slash" viewBox="0 0 80 80" fill="none">
+    <path d="M10 70 L70 10" stroke="#FFD43B" stroke-width="6" stroke-linecap="round"></path>
+    <path d="M20 70 L75 20" stroke="#FF6B35" stroke-width="3" stroke-linecap="round" opacity="0.6"></path>
+    <path d="M5 60 L60 5" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.4"></path>
+  </svg>
+  <div id="screenFlash"></div>
+  <div id="speechBubble"></div>
+  <div id="enemySpeech"></div>
+  <div id="turnToast"></div>
+  <div id="oraclePanel" class="active" style="animation: 0.5s cubic-bezier(0.34, 1.3, 0.64, 1) 0s 1 normal forwards running oracleSlideIn;">
+    <div class="op-label">🔮 神のお告げ</div>
+    <div id="oracleNum" class="">27</div>
+  </div>
+  <div id="oracleFlash"></div>
+  <div id="godChar">神</div>
+  <div id="holyBeam" style="position:absolute;bottom:0;left:50%;width:60px;background:linear-gradient(180deg,rgba(255,215,0,0) 0%,rgba(255,215,0,0.4) 40%,rgba(255,255,200,0.7) 100%);transform-origin:bottom center;opacity:0;pointer-events:none;z-index:22;"></div>
+  <div id="enemyFormulaPop">
+    <span class="efp-label-top">💀 てきのこうげき計算式！</span>
+    <span class="efp-base" id="efpBase">10</span>
+    <span class="efp-x">×</span>
+    <span class="efp-mult" id="efpMult">3</span>
+    <span class="efp-x">倍</span>
+    <span class="efp-eq">=</span>
+    <span class="efp-result" id="efpResult">?</span>
+    <span class="efp-dmg">ダメージ</span>
+  </div>
+</div>
+
+<!-- HP BARS -->
+<div class="hp-section">
+  <div class="hp-row">
+    <span class="hp-name">🦸 ゆうしゃ</span>
+    <div class="hp-bar-bg"><div class="hp-bar-fill hp-hero-fill" id="heroHpBar" style="width:100%"></div></div>
+    <span class="hp-num" id="heroHpNum">250/250</span>
+  </div>
+  <div class="hp-row">
+    <span class="hp-name" id="enemyNameLbl">👹 ラスボス</span>
+    <div class="hp-bar-bg"><div class="hp-bar-fill hp-enemy-fill" id="enemyHpBar" style="width:100%"></div></div>
+    <span class="hp-num" id="enemyHpNum">HP 500/500</span>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="weapon-label">⚔️ 武器を選ぼう <span style="font-size:0.7rem;color:#555">（攻撃力）</span></div>
+  <div class="weapon-row" id="weaponRow"><div class="weapon-card active" id="wcard-0" style="--wc: #69DB7C; --wbg: #0a1a0e; --wglow: rgba(105,219,124,0.4); --wshadow: #1a5c2a;"><div class="weapon-uses full" id="wuses-weak">✨神の手 60%</div><div class="weapon-icon">🪵</div><div class="weapon-name">木の棒</div><div style="font-weight:900;font-size:1.5rem;color:#69DB7C;text-shadow:0 0 10px rgba(105,219,124,0.4);line-height:1.1;margin-top:2px">2</div></div><div class="weapon-card" id="wcard-1" style="--wc: #4DABF7; --wbg: #0a1020; --wglow: rgba(77,171,247,0.4); --wshadow: #1a4a7a;"><div class="weapon-icon">🪄</div><div class="weapon-name">魔法の杖</div><div style="font-weight:900;font-size:1.5rem;color:#4DABF7;text-shadow:0 0 10px rgba(77,171,247,0.4);line-height:1.1;margin-top:2px">3</div></div><div class="weapon-card" id="wcard-2" style="--wc: #FF6B35; --wbg: #1a0a00; --wglow: rgba(255,107,53,0.5); --wshadow: #7a2a00;"><div class="weapon-icon">⚡🗡️</div><div class="weapon-name">伝説の剣</div><div style="font-weight:900;font-size:1.5rem;color:#FF6B35;text-shadow:0 0 10px rgba(255,107,53,0.5);line-height:1.1;margin-top:2px">5</div></div></div>
+  <div class="mult-label">⚡ 出力を選ぼう <span style="font-size:0.7rem;color:#555">（倍率）</span></div>
+  <div class="mult-row" id="multRow"><button class="mult-btn active" data-v="1">1</button><button class="mult-btn" data-v="2">2</button><button class="mult-btn" data-v="3">3</button><button class="mult-btn" data-v="4">4</button><button class="mult-btn" data-v="5">5</button><button class="mult-btn" data-v="6">6</button><button class="mult-btn" data-v="7">7</button><button class="mult-btn" data-v="8">8</button><button class="mult-btn" data-v="9">9</button><button class="mult-btn" data-v="10">10</button></div>
+  <div class="formula-wrap" style="min-height:72px;display:flex;flex-direction:column;justify-content:center;">
+    <div class="formula-text">
+      <span class="f-base" id="fBase" style="color: rgb(105, 219, 124); text-shadow: rgba(105, 219, 124, 0.4) 0px 0px 8px;"><span style="font-size:0.9em">🪵</span>2</span>
+      <span class="f-x">×</span>
+      <span class="f-mult-val" id="fMult">1</span>
+      <span class="f-x">倍</span>
+      <span class="f-eq">=</span>
+      <span class="f-result" id="fResult">2</span>
+      <span style="color:#666;font-size:0.72rem">ダメージ</span>
+    </div>
+    <div class="formula-hint" id="fHint">1倍 = そのまま。基本のこうげき！</div>
+    <div id="oracleMatch" style="margin-top:4px;font-size:0.72rem;text-align:center;height:1.4em;overflow:hidden;"></div>
+  </div>
+  <div id="actionArea"><button class="btn-attack" id="btnAttack" onclick="doPlayerAttack()"><span id="btnLabel">🪵 木の棒 1倍アタック！</span></button></div>
+  <button class="btn-reset" onclick="resetGame()">🔄 最初からやり直す</button>
+</div>
+
+<!-- LOG -->
+<div class="log-section">
+  <div class="log-title">バトルログ</div>
+  <div class="log-list" id="logList"><div class="log-item">⚡ 武器を選んでこうげきしよう！</div></div>
+</div>
+
+<!-- VICTORY -->
+<div class="overlay" id="victoryOverlay">
+  <div class="overlay-icon">🎉</div>
+  <div class="overlay-title win">やったー！<br>てきをたおした！</div>
+  <div class="overlay-sub" id="victoryMsg"></div>
+  <button class="btn-ol primary" onclick="nextEnemy()">次のてきへ ➡️</button>
+  <button class="btn-ol secondary" onclick="resetGame();document.getElementById(&#39;victoryOverlay&#39;).classList.remove(&#39;show&#39;)">はじめから</button>
+</div>
+
+<!-- GAME OVER -->
+<div class="overlay" id="gameoverOverlay">
+  <div class="overlay-icon">💀</div>
+  <div class="overlay-title lose">やられた…！</div>
+  <div class="overlay-sub" id="gameoverMsg"></div>
+  <button class="btn-ol primary" onclick="resetGame();document.getElementById(&#39;gameoverOverlay&#39;).classList.remove(&#39;show&#39;)">もう一度！</button>
+</div>
+
+<script>
+
+// ===== DATA =====
+const WEAPONS = [
+  { id:'weak',   name:'木の棒',           icon:'🪵',    baseAtk:2,  color:'#69DB7C', bg:'#0a1a0e', glow:'rgba(105,219,124,0.4)', shadow:'#1a5c2a', maxUses:999 },
+  { id:'mid',    name:'魔法の杖',     icon:'🪄',    baseAtk:3,  color:'#4DABF7', bg:'#0a1020', glow:'rgba(77,171,247,0.4)',  shadow:'#1a4a7a', maxUses:999 },
+  { id:'strong', name:'伝説の剣',   icon:'⚡🗡️', baseAtk:5,  color:'#FF6B35', bg:'#1a0a00', glow:'rgba(255,107,53,0.5)',  shadow:'#7a2a00', maxUses:5   },
+];
+const MULT_HINTS = {
+  1:"1倍 = そのまま。基本のこうげき！",
+  2:"2倍！2つ分のちから！",
+  3:"3倍！ぐんと強くなった！",
+  4:"4倍！かなりの威力！",
+  5:"5倍！もうすごい！",
+  6:"6倍！とんでもない破壊力！",
+  7:"7倍！ラッキー7倍！",
+  8:"8倍！メガクラスの威力！",
+  9:"9倍！ほぼ最強！",
+  10:"10倍！究極の出力！！",
+};
+const ENEMIES = [
+  { name:"👹 ラスボス",    emoji:"👹", hp:500,  size:"4.5rem", eBase:8,  eMin:1, eMax:2 },
+  { name:"🐉 ドラゴン",    emoji:"🐉", hp:900,  size:"5rem",   eBase:10, eMin:2, eMax:3 },
+  { name:"👾 ダークキング", emoji:"👾", hp:1400, size:"5.5rem", eBase:12, eMin:3, eMax:4 },
+];
+const ENEMY_PHRASES = [
+  ["ふんっ！","くらえ！"],["2倍だ！","2倍こうげき！"],["3倍！ははは！","3倍の力！"],
+  ["4倍パンチ！","くらえ4倍！"],["5倍必殺！","はあっ！5倍だ！"],
+  ["6倍爆撃！","ひれふせ！"],["7倍…終わりだ！","7倍だ覚悟しろ！"],
+];
+
+// ===== STATE =====
+let eIdx=0, eHp=500, eMaxHp=500, hHp=250;
+let selW=0, mult=1, strongUses=5, weakAttackCount=0;
+let turnMode=false, isPlayerTurn=true, busy=false;
+let oracleVal=0, oracleMode=true;
+
+// ===== INIT =====
+function init(){
+  buildWeaponCards(); buildMultRow(); loadEnemy(); updateFormula(); updateTurnUI(); rollOracle();
+  // オープニングを2秒表示後にフェードアウト
+  var op = document.getElementById('opening');
+  if(op){
+    setTimeout(function(){
+      op.style.transition = 'opacity 0.6s';
+      op.style.opacity = '0';
+      setTimeout(function(){ op.style.display = 'none'; }, 650);
+    }, 2000);
+  }
+}
+
+function buildWeaponCards(){
+  const row=document.getElementById('weaponRow');
+  row.innerHTML='';
+  WEAPONS.forEach((w,i)=>{
+    const card=document.createElement('div');
+    card.className='weapon-card'+(i===selW?' active':'');
+    card.id='wcard-'+i;
+    card.style.setProperty('--wc',w.color);
+    card.style.setProperty('--wbg',w.bg);
+    card.style.setProperty('--wglow',w.glow);
+    card.style.setProperty('--wshadow',w.shadow);
+    card.onclick=()=>selectWeapon(i);
+    let badge='';
+    if(w.maxUses<999 && !oracleMode) badge=`<div class="weapon-uses" id="wuses-2">${strongUses}回のこり</div>`;
+    if(i===0) badge=`<div class="weapon-uses full" id="wuses-weak">神の手まで ${3-weakAttackCount%3}回</div>`;
+    card.innerHTML=`${badge}<div class="weapon-icon">${w.icon}</div><div class="weapon-name">${w.name}</div><div style="font-weight:900;font-size:1.5rem;color:${w.color};text-shadow:0 0 10px ${w.glow};line-height:1.1;margin-top:2px">${w.baseAtk}</div>`;
+    row.appendChild(card);
+  });
+  updateWeaponBadge();
+}
+
+function buildMultRow(){
+  const row=document.getElementById('multRow');
+  row.innerHTML='';
+  for(let i=1;i<=10;i++){
+    const b=document.createElement('button');
+    b.className='mult-btn'+(i===mult?' active':'');
+    b.textContent=i; b.dataset.v=i;
+    b.onclick=()=>selectMult(i);
+    row.appendChild(b);
+  }
+}
+
+function updateWeaponBadge(){
+  const badge=document.getElementById('wuses-2');
+  if(badge){
+    if(oracleMode){
+      badge.style.display='none';
+    } else {
+      badge.style.display='';
+      badge.textContent=`${strongUses}回のこり`;
+      badge.className='weapon-uses '+(strongUses>=5?'full':strongUses>=2?'warn':'empty');
+      document.getElementById('wcard-2').classList.toggle('disabled-card', strongUses<=0);
+    }
+  }
+}
+
+function selectWeapon(i){
+  if(i===2&&strongUses<=0) return;
+  selW=i;
+  document.querySelectorAll('.weapon-card').forEach((c,j)=>c.classList.toggle('active',j===i));
+  updateFormula(); updateTurnUI();
+}
+
+function selectMult(v){
+  mult=v;
+  document.querySelectorAll('.mult-btn').forEach(b=>b.classList.toggle('active',+b.dataset.v===v));
+  updateFormula(); updateTurnUI();
+}
+
+function loadEnemy(){
+  const e=ENEMIES[eIdx];
+  document.getElementById('enemyNameLbl').textContent=e.name;
+  const el=document.getElementById('enemy');
+  el.textContent=e.emoji; el.style.fontSize=e.size; el.className='idle';
+  eMaxHp=e.hp; eHp=eMaxHp; updateBars();
+}
+
+function updateFormula(){
+  const w=WEAPONS[selW];
+  const dmg=w.baseAtk*mult;
+  document.getElementById('fBase').innerHTML=`<span style="font-size:0.9em">${w.icon}</span>${w.baseAtk}`;
+  document.getElementById('fBase').style.color=w.color;
+  document.getElementById('fBase').style.textShadow=`0 0 8px ${w.glow}`;
+  document.getElementById('fMult').textContent=mult;
+  document.getElementById('fResult').textContent=dmg;
+  document.getElementById('fHint').textContent=MULT_HINTS[mult]||'';
+  // 木の棒カードの神の手確率バッジを倍率切替時に更新
+  const wbadge=document.getElementById('wuses-weak');
+  if(wbadge){
+    const rate = Math.round(60 - (mult-1) * 5);
+    wbadge.textContent=`✨神の手 ${rate}%`;
+    wbadge.className='weapon-uses '+(rate>=50?'full':rate>=30?'warn':'empty');
+  }
+  // ボタンラベルを「武器名 ○倍アタック！」に
+  const btn=document.getElementById('btnLabel');
+  if(btn) btn.textContent=`${w.icon} ${w.name} ${mult}倍アタック！`;
+  updateOracleMatch();
+}
+
+// ===== 神のお告げモード =====
+function toggleOracleMode(){
+  oracleMode=!oracleMode;
+  const tog=document.getElementById('oracleToggle');
+  const lbl=document.getElementById('oracleToggleLbl');
+  tog.classList.toggle('on',oracleMode);
+  lbl.textContent=oracleMode?'神のお告げ ON':'神のお告げ OFF';
+  lbl.classList.toggle('on',oracleMode);
+  buildWeaponCards(); // バッジ表示の即時切替
+  updateWeaponBadge();
+  updateFormula();
+  if(oracleMode){ rollOracle(); }
+  else { hideOraclePanel(); updateOracleMatchClear(); }
+}
+
+function updateOracleMatchClear(){
+  const match=document.getElementById('oracleMatch');
+  if(match) match.innerHTML='';
+  const btn=document.getElementById('btnLabel');
+  if(btn){ const w=WEAPONS[selW]; btn.textContent=`${w.icon} ${w.name} ${mult}倍アタック！`; }
+}
+
+function rollOracle(){
+  if(!oracleMode) return;
+  const possibles=[];
+  WEAPONS.forEach(w=>{ for(let m=1;m<=10;m++) possibles.push(w.baseAtk*m); });
+  const unique=[...new Set(possibles)];
+  oracleVal=unique[Math.floor(Math.random()*unique.length)];
+  showOraclePanel();
+  updateOracleMatch();
+}
+
+let oraclePanelTimer=null;
+function showOraclePanel(){
+  const p=document.getElementById('oraclePanel');
+  const n=document.getElementById('oracleNum');
+  if(!p||!n) return;
+  if(oraclePanelTimer){ clearTimeout(oraclePanelTimer); oraclePanelTimer=null; }
+  n.textContent=oracleVal;
+  n.className='';
+  p.classList.add('active');
+  p.style.animation='none'; p.offsetHeight;
+  p.style.animation='oracleSlideIn 0.5s cubic-bezier(0.34,1.3,0.64,1) forwards';
+}
+
+function hideOraclePanel(fast){
+  const p=document.getElementById('oraclePanel');
+  if(!p) return;
+  p.style.animation='none'; p.offsetHeight;
+  p.style.animation=`oracleSlideOut ${fast?0.25:0.4}s ease forwards`;
+  oraclePanelTimer=setTimeout(()=>{ p.classList.remove('active'); p.style.animation=''; },fast?260:420);
+}
+
+function updateOracleMatch(){
+  const w=WEAPONS[selW];
+  const dmg=w.baseAtk*mult;
+  const match=document.getElementById('oracleMatch');
+  const num=document.getElementById('oracleNum');
+  const btn=document.getElementById('btnLabel');
+  const fResult=document.getElementById('fResult');
+  if(!match) return;
+
+  if(oracleMode && dmg===oracleVal){
+    // ぴったり一致：金色神々しく輝く
+    match.innerHTML='<span style="color:#FF6B35;font-weight:900">⬇ このまま攻撃！</span>';
+    if(btn) btn.innerHTML=`${w.icon}😊 このまま攻撃で <span style="color:#FFD700">+10%ボーナス</span>`;
+    if(num) num.className='hit';
+    if(fResult) fResult.classList.add('divine');
+  } else {
+    // 通常 or 不一致
+    if(fResult) fResult.classList.remove('divine');
+    if(oracleMode){
+      const diff=oracleVal-dmg;
+      if(Math.abs(diff)<=3 && diff!==0){
+        match.innerHTML=`<span style="color:#FFD43B">あと${diff>0?'+':''}${diff} で一致！</span>`;
+      } else {
+        match.innerHTML='';
+      }
+      if(num) num.className='';
+    } else {
+      match.innerHTML='';
+    }
+    if(btn) btn.textContent=`${w.icon} ${w.name} ${mult}倍アタック！`;
+  }
+}
+
+// 攻撃と同時にお告げパネルを消す（doPlayerAttackから呼ぶ）
+function dismissOraclePanel(){
+  if(!oracleMode) return;
+  const p=document.getElementById('oraclePanel');
+  if(!p||!p.classList.contains('active')) return;
+  // divine グロー解除
+  const fResult=document.getElementById('fResult');
+  if(fResult) fResult.classList.remove('divine');
+  p.style.animation='none'; p.offsetHeight;
+  p.style.animation='oracleSlideOut 0.25s ease forwards';
+  setTimeout(()=>{ p.classList.remove('active'); p.style.animation=''; },260);
+}
+
+// 攻撃後：ヒットならニコニコ絵文字がふわっと飛ぶ
+function resolveOracle(isHit, bonusDmg){
+  if(!oracleMode) return;
+  if(isHit){
+    // 緑フラッシュ
+    const fl=document.getElementById('oracleFlash');
+    fl.style.animation='none'; fl.offsetHeight;
+    fl.style.animation='oracleFlashAnim 0.8s ease forwards';
+    // ニコニコ絵文字をdmgNumberと同じふわっとアニメで飛ばす
+    spawnSmileEmojis();
+  }
+  // 次のお告げを少し後に表示
+  setTimeout(()=>{
+    const n=document.getElementById('oracleNum');
+    if(n){ n.style.fontSize=''; n.className=''; }
+    rollOracle(); updateOracleMatch();
+  }, isHit ? 1400 : 600);
+}
+
+function spawnSmileEmojis(){
+  const smiles=['😄','😁','🎉','✨','😆','🌟','🥳','💛'];
+  const f=document.getElementById('battleField');
+  const c=document.getElementById('particles');
+  const W=f.offsetWidth, H=f.offsetHeight;
+  // フィールド全体に均等に散らす（6箇所を固定配置＋少しランダム）
+  const spots=[
+    {x:0.15,y:0.65},{x:0.35,y:0.45},{x:0.55,y:0.6},
+    {x:0.72,y:0.4},{x:0.85,y:0.65},{x:0.45,y:0.75},
+  ];
+  spots.forEach((pos,i)=>{
+    const el=document.createElement('div');
+    const jx=(Math.random()-0.5)*W*0.08; // 少しだけランダムにずらす
+    const jy=(Math.random()-0.5)*H*0.08;
+    const dy=-(50+Math.random()*40);
+    const dur=0.9+Math.random()*0.4;
+    const delay=i*0.1;
+    const sz=1.3+Math.random()*0.8;
+    el.textContent=smiles[(i+Math.floor(Math.random()*2))%smiles.length];
+    el.style.cssText=`position:absolute;left:${W*pos.x+jx}px;top:${H*pos.y+jy}px;font-size:${sz}rem;line-height:1;--dx:${(Math.random()-0.5)*30}px;--dy:${dy}px;--pr:${Math.random()*20-10}deg;--ps:1;animation:dmgFloat ${dur}s ease forwards;animation-delay:${delay}s;pointer-events:none;z-index:35;opacity:1;`;
+    c.appendChild(el);
+    setTimeout(()=>el.remove(),(dur+delay+0.1)*1000);
+  });
+}
+
+function updateBars(){
+  document.getElementById('heroHpBar').style.width=Math.max(0,(hHp/250)*100)+'%';
+  document.getElementById('enemyHpBar').style.width=Math.max(0,(eHp/eMaxHp)*100)+'%';
+  document.getElementById('heroHpNum').textContent=Math.max(0,hHp)+'/250';
+  document.getElementById('enemyHpNum').textContent='HP '+Math.max(0,eHp)+'/'+eMaxHp;
+}
+
+// ===== TURN MODE =====
+function toggleTurnMode(){
+  turnMode=!turnMode;
+  document.getElementById('turnToggle').classList.toggle('on',turnMode);
+  document.getElementById('turnToggleLbl').textContent=turnMode?'交代バトル ON':'交代バトル OFF';
+  document.getElementById('turnToggleLbl').classList.toggle('on',turnMode);
+  isPlayerTurn=true; updateTurnUI();
+  addLog(turnMode?'⚡ こうたいモードON！敵も攻撃してくるぞ！':'⚡ こうたいモードOFF',false);
+}
+
+function showTurnToast(isHero){
+  const t=document.getElementById('turnToast');
+  t.textContent=isHero?'⚔️ あなたのターン！':'💀 てきのターン…';
+  t.className=isHero?'hero':'enemy';
+  t.style.animation='none'; t.offsetHeight;
+  t.style.animation='toastFlash 1.1s ease forwards';
+}
+
+function updateTurnUI(){
+  const area=document.getElementById('actionArea');
+  const w=WEAPONS[selW];
+  const label=`${w.icon} ${w.name} ${mult}倍アタック！`;
+  if(!turnMode){
+    area.innerHTML=`<button class="btn-attack" id="btnAttack" onclick="doPlayerAttack()"><span id="btnLabel">${label}</span></button>`;
+    return;
+  }
+  if(isPlayerTurn){
+    showTurnToast(true);
+    area.innerHTML=`<button class="btn-attack" id="btnAttack" onclick="doPlayerAttack()"><span id="btnLabel">${label}</span></button>`;
+  } else {
+    showTurnToast(false);
+    area.innerHTML=`<div class="enemy-waiting">💀 てきがこうげきしてくる…！</div>`;
+  }
+}
+
+// ===== PLAYER ATTACK =====
+function doPlayerAttack(){
+  if(busy||eHp<=0) return;
+  if(selW===2&&strongUses<=0) return;
+  busy=true;
+  const btn=document.getElementById('btnAttack'); if(btn) btn.disabled=true;
+  const w=WEAPONS[selW];
+  const baseDmg=w.baseAtk*mult;
+
+  // ===== 神のお告げ ぴったりボーナス =====
+  const isOracleHit = (baseDmg === oracleVal);
+  const oracleBonusDmg = isOracleHit ? Math.round(baseDmg * 0.1) : 0;
+
+  // 強ぶき使用カウント（神のお告げモード中は無制限）
+  if(selW===2 && !oracleMode){ strongUses--; updateWeaponBadge(); if(strongUses<=0) selW=0; }
+
+  // ===== 木の棒：神の手チェック（低倍率ほど高確率） =====
+  // mult=1→60%, mult=3→45%, mult=5→33%, mult=7→22%, mult=10→15%
+  let godBonus=0, isGodHand=false;
+  if(selW===0){
+    const godRate = Math.round(60 - (mult-1) * 5) / 100;
+    isGodHand = Math.random() < godRate;
+    if(isGodHand){
+      // 最大武器ダメージ(5×10=50)を超えられるよう上限を引き上げ
+      // mult=1: 40〜100, mult=5: 20〜70, mult=10: 8〜40
+      const maxBonus = Math.round(100 - (mult-1)*6.5);
+      const minBonus = Math.round(40  - (mult-1)*3.5);
+      const bias = Math.max(0.5, 3.0 - (mult-1)*0.28);
+      godBonus = weightedRandom(minBonus, maxBonus, bias);
+    }
+  }
+
+  const totalDmg = baseDmg + godBonus + oracleBonusDmg;
+
+  // セリフ
+  const multPhrases=["！","！2倍！","！3倍！","！4倍！","！5倍！","！6倍！","！7倍！","！8倍！","！9倍！","！10倍！！！"];
+  const weakPhrases=["木の棒だー","えいっ","ポカッ！","がんばれ木の棒！"];
+  const midPhrases=["魔法発動！","魔力チャージ！","杖一閃！"];
+  const strongPhrases=["でんせつの力！","必殺！！","ウルトラ！！！"];
+  const wpArr=selW===0?weakPhrases:selW===1?midPhrases:strongPhrases;
+  const speechBase=wpArr[Math.floor(Math.random()*wpArr.length)]+(multPhrases[mult-1]||`${mult}倍！`);
+  showSpeech(isGodHand?'✨神の手助け！！':speechBase);
+
+  const hero=document.getElementById('hero');
+  const chargeDur=Math.max(0.1,0.28-mult*0.018);
+  hero.style.setProperty('--charge-dur',chargeDur+'s');
+  hero.className='charge';
+
+  setTimeout(()=>{
+    hero.className='attack';
+    dismissOraclePanel(); // 攻撃と同時にお告げ消す
+    showAtkEffect(`${mult}倍！`,mult);
+    if(mult>=3) showSlash(mult);
+    if(mult>=7) setTimeout(()=>showSlash(mult),120);
+    if(mult>=9) setTimeout(()=>showSlash(mult),240);
+    // 演出はtotalDmg（神の手・お告げボーナス含む）でスケール
+    const effectDmg = totalDmg;
+    spawnParts(effectDmg,0.72,0.5); shakeField(effectDmg);
+    if(mult>=2) flashScreen(effectDmg,false);
+    spawnRings(effectDmg,0.72,0.5);
+    if(effectDmg>=20) setTimeout(()=>{ spawnRings(effectDmg*1.3,0.72,0.5); },150);
+    if(effectDmg>=40) setTimeout(()=>{ flashScreen(effectDmg,false); spawnParts(effectDmg*0.6,0.75,0.45); },280);
+    if(effectDmg>=70) setTimeout(()=>{ spawnRings(effectDmg*1.6,0.72,0.5); flashScreen(effectDmg*0.8,false); spawnParts(effectDmg*0.4,0.70,0.55); },420);
+  },340);
+
+  // 通常ダメージ（お告げボーナスも同時に反映）
+  setTimeout(()=>{
+    eHp=Math.max(0,eHp-baseDmg-oracleBonusDmg); updateBars();
+    showDmgNum(baseDmg,false);
+    const en=document.getElementById('enemy');
+    if(!isGodHand){
+      if(eHp<=0){ en.className='dead'; } else { en.className='hit'; setTimeout(()=>en.className='idle',600); }
+    } else {
+      en.className='hit';
+    }
+  },600);
+
+  setTimeout(()=>hero.className='idle',860);
+
+  // 神のお告げ判定
+  if(oracleMode){
+    setTimeout(()=>resolveOracle(isOracleHit, oracleBonusDmg), isGodHand ? 2300 : 950);
+  }
+  if(isGodHand){
+    setTimeout(()=>{
+      showGodHandEffect(godBonus, mult);
+    }, 1100);
+    setTimeout(()=>{
+      eHp=Math.max(0,eHp-godBonus); updateBars();
+      showDmgNum(godBonus,false,'#FFD700');
+      const en=document.getElementById('enemy');
+      if(eHp<=0){ en.className='dead'; } else { en.className='hit'; setTimeout(()=>en.className='idle',600); }
+      spawnParts(godBonus*2, 0.72, 0.4);
+      spawnRings(godBonus*2, 0.72, 0.4);
+      flashScreen(godBonus*1.5, false);
+    }, 1400);
+  }
+
+  const logDelay = isGodHand ? 2000 : 1060;
+  setTimeout(()=>{
+    if(isGodHand && isOracleHit){
+      addLog(`${w.icon} ${w.baseAtk}×${mult}倍＝${baseDmg} ＋神の手+${godBonus} ＋お告げ+${oracleBonusDmg} ＝ 合計${totalDmg}！`,'hero-log');
+    } else if(isGodHand){
+      addLog(`🪵 木の棒 ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ ✨神の手+${godBonus} ＝ 合計${totalDmg}ダメージ！`,'hero-log');
+    } else if(isOracleHit){
+      addLog(`${w.icon} ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ 🎉お告げ達成+${oracleBonusDmg} ＝ 合計${totalDmg}ダメージ！`,'hero-log');
+    } else {
+      addLog(`${w.icon} ${w.baseAtk} × ${mult}倍 ＝ ${baseDmg} ダメージ！`,'hero-log');
+    }
+    if(eHp<=0){ busy=false; setTimeout(showVictory,800); return; }
+    busy=false; updateFormula(); updateWeaponBadge();
+    if(turnMode){ isPlayerTurn=false; updateTurnUI(); setTimeout(doEnemyAttack,800); }
+    else { updateTurnUI(); }
+  }, logDelay);
+}
+
+// 低倍率ほど大きい値に偏るランダム
+function weightedRandom(min, max, bias){
+  // bias>1 で小さい値寄り → 逆転させて大きい値寄りに
+  const r=Math.pow(Math.random(), 1/bias);
+  return Math.round(min + r*(max-min));
+}
+
+// 神の手演出 — 漢字「神」が天から降臨
+function showGodHandEffect(bonus, m){
+  const godPhrases=[
+    `神の力を授けよう！`,
+    `そなたに加護を！`,
+    `木の棒よ、輝け！`,
+    `天よりの恵みじゃ！`,
+    `信じる者を救おう！`,
+  ];
+  const phrase=godPhrases[Math.floor(Math.random()*godPhrases.length)];
+
+  const gc=document.getElementById('godChar');
+  gc.textContent='神';
+
+  // 光の柱
+  const f=document.getElementById('battleField');
+  const beam=document.getElementById('holyBeam');
+  beam.style.height=f.offsetHeight+'px';
+  beam.style.animation='none'; beam.offsetHeight;
+  beam.style.animation='holyBeam 2.6s ease forwards';
+
+  // 「神」降臨 → 留まる間パルス → 昇天
+  gc.style.animation='none'; gc.offsetHeight;
+  gc.style.animation='godDescend 2.6s cubic-bezier(0.22,1.2,0.5,1) forwards';
+
+  // パルス（降臨してから少し後に開始）
+  setTimeout(()=>{
+    gc.style.animation='godDescend 2.6s cubic-bezier(0.22,1.2,0.5,1) forwards, kamiPulse 0.5s ease-in-out infinite';
+    // 昇天前にパルス止める
+    setTimeout(()=>{ gc.style.animation='godDescend 2.6s cubic-bezier(0.22,1.2,0.5,1) forwards'; },1600);
+  },700);
+
+  // 金色フラッシュ（上から差し込むグラデ）
+  const fl=document.getElementById('screenFlash');
+  fl.style.background='radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.8), rgba(255,180,0,0.4) 50%, transparent 80%)';
+  fl.style.setProperty('--sfo','0.75');
+  fl.style.animation='none'; fl.offsetHeight;
+  fl.style.animation='screenFlashAnim 1s ease forwards';
+
+  // ダメージ表示テキスト
+  const el=document.getElementById('attackEffect');
+  el.textContent=`神の力！ +${bonus}`;
+  el.style.color='#FFD700';
+  el.style.fontSize='clamp(1.4rem,5vw,2.2rem)';
+  el.style.textShadow='0 0 24px rgba(255,215,0,1), 0 0 48px rgba(255,160,0,0.9)';
+  el.style.animation='none'; el.offsetHeight;
+  el.style.animation='atkShow 1.6s ease forwards';
+
+  // 聖なる光のパーティクル（金色系）
+  const c=document.getElementById('particles');
+  const ex=f.offsetWidth*0.5, ey=f.offsetHeight*0.2;
+  const lightColors=['#FFD700','#FFF176','#FFCA28','#FFE082','#ffffff','#FFF9C4'];
+  for(let i=0;i<30;i++){
+    const p=document.createElement('div');
+    const angle=(Math.random()*360)*(Math.PI/180);
+    const dist=50+Math.random()*150;
+    const dx=Math.cos(angle)*dist, dy=Math.sin(angle)*dist+30;
+    const sz=3+Math.random()*8;
+    const col=lightColors[Math.floor(Math.random()*lightColors.length)];
+    const dur=0.6+Math.random()*0.8, delay=0.2+Math.random()*0.5;
+    p.style.cssText=`position:absolute;left:${ex}px;top:${ey}px;width:${sz}px;height:${sz}px;border-radius:50%;background:${col};box-shadow:0 0 ${sz*2}px ${col};--dx:${dx}px;--dy:${dy}px;--pr:${Math.random()*360}deg;--ps:1;animation:particleFly ${dur}s ease-out forwards;animation-delay:${delay}s;pointer-events:none;z-index:21;`;
+    c.appendChild(p); setTimeout(()=>p.remove(),(dur+delay+0.1)*1000);
+  }
+}
+
+// ===== ENEMY ATTACK =====
+function doEnemyAttack(){
+  if(hHp<=0||eHp<=0) return;
+  busy=true;
+  const e=ENEMIES[eIdx];
+  const eMult=e.eMin+Math.floor(Math.random()*(e.eMax-e.eMin+1));
+  const eDmg=e.eBase*eMult;
+  const ep=ENEMY_PHRASES[Math.min(eMult-1,ENEMY_PHRASES.length-1)];
+  showEnemySpeech(ep[Math.floor(Math.random()*ep.length)]);
+  const en=document.getElementById('enemy');
+  en.className='echarge';
+  setTimeout(()=>{
+    en.className='eattack';
+    spawnParts(eDmg,0.22,0.5); shakeField(eDmg); flashScreen(eDmg,true);
+  },700);
+  setTimeout(()=>{
+    hHp=Math.max(0,hHp-eDmg); updateBars(); showDmgNum(eDmg,true);
+    const hero=document.getElementById('hero');
+    hero.className='hurt'; setTimeout(()=>hero.className='idle',600);
+  },960);
+  setTimeout(()=>en.className='idle',1120);
+  setTimeout(()=>showEnemyFormula(e.eBase,eMult,eDmg),1550);
+  setTimeout(()=>{
+    addLog(`💀 ${e.name}： ${e.eBase} × ${eMult}倍 ＝ ${eDmg} ダメージ！`,'enemy-log');
+    if(hHp<=0){ busy=false; setTimeout(showGameOver,600); return; }
+    busy=false;
+  },1800);
+  // ターン表示は計算式が消えた後（1550+3200=4750ms）
+  setTimeout(()=>{
+    if(hHp>0){ isPlayerTurn=true; updateTurnUI(); }
+  },4800);
+}
+
+// ===== ENEMY FORMULA POPUP =====
+function showEnemyFormula(base,m,result){
+  const pop=document.getElementById('enemyFormulaPop');
+  document.getElementById('efpBase').textContent=base;
+  document.getElementById('efpMult').textContent=m+'倍';
+  document.getElementById('efpResult').textContent='？';
+  pop.style.animation='none'; pop.offsetHeight;
+  pop.style.animation='efpIn 3.2s ease forwards';
+  setTimeout(()=>{ const r=document.getElementById('efpResult'); r.textContent=result; r.style.animation='none'; r.offsetHeight; r.style.animation='resultPop 0.35s ease'; },800);
+}
+
+// ===== SPEECH =====
+function showSpeech(t){ const b=document.getElementById('speechBubble'); b.textContent=t; b.style.animation='none'; b.offsetHeight; b.style.animation='bubbleShow 1.4s ease forwards'; }
+function showEnemySpeech(t){ const b=document.getElementById('enemySpeech'); b.textContent=t; b.style.animation='none'; b.offsetHeight; b.style.animation='bubbleShow 1.4s ease forwards'; }
+
+// ===== EFFECTS =====
+function showAtkEffect(t, m){
+  const el=document.getElementById('attackEffect'); el.textContent=t;
+  const c={1:'#aaa',2:'#69DB7C',3:'#4DABF7',4:'#CC5DE8',5:'#FFD43B',6:'#FF9500',7:'#FF6B35',8:'#FF3333',9:'#FF0066',10:'#FF0000'};
+  el.style.color=c[m]||'#FFD43B';
+  // 指数的にフォントサイズ拡大: mult=1→1.4rem, mult=5→2.5rem, mult=10→4.2rem
+  const sz = 1.4 + Math.pow(m-1, 1.4) * 0.18;
+  el.style.fontSize=`${sz}rem`;
+  // 高倍率ほど強いグロー
+  el.style.textShadow=`0 0 ${10+m*8}px ${c[m]||'#FFD43B'}, 0 0 ${m*16}px ${c[m]||'#FFD43B'}`;
+  el.style.animation='none'; el.offsetHeight; el.style.animation='atkShow 0.8s ease forwards';
+}
+function showSlash(m){ const sl=document.getElementById('slash'); sl.style.width=sl.style.height=`${40+m*10}px`; sl.style.animation='none'; sl.offsetHeight; sl.style.animation='slashAnim 0.5s ease forwards'; }
+function showDmgNum(dmg,isHero,overrideColor){
+  const el=document.getElementById(isHero?'heroDmgNumber':'dmgNumber');
+  el.textContent=`-${dmg}`;
+  const sz=Math.min(isHero?4.5:5.5,(isHero?1.4:1.6)+Math.pow(dmg,0.55)*0.22);
+  el.style.fontSize=`${sz}rem`;
+  if(overrideColor){ el.style.color=overrideColor; el.style.textShadow=`0 0 20px ${overrideColor}, 2px 2px 0 #000`; }
+  else if(!isHero) el.style.color=dmg>=100?'#FF0000':dmg>=60?'#FF6B35':dmg>=30?'#FFD43B':'#FF6B6B';
+  el.style.animation='none'; el.offsetHeight; el.style.animation='dmgFloat 1s ease forwards';
+}
+function calcI(dmg){ return Math.pow(dmg/60,0.65); }
+function shakeField(dmg){
+  const i=calcI(dmg); if(i<0.02) return;
+  const f=document.getElementById('battleField');
+  f.style.setProperty('--sx',`${Math.min(28,3+i*25)}px`); f.style.setProperty('--sy',`${Math.min(16,2+i*14)}px`);
+  const d=Math.min(0.9,0.2+i*0.5); f.style.animation='none'; f.offsetHeight;
+  f.style.animation=`fieldShake ${d}s ease`; setTimeout(()=>f.style.animation='',d*1000+100);
+}
+function flashScreen(dmg,isEnemy){
+  const i=calcI(dmg); if(i<0.08) return;
+  const el=document.getElementById('screenFlash');
+  el.style.background=isEnemy?(dmg>=60?`rgba(0,30,200,0.55)`:`rgba(80,80,255,0.35)`):(dmg>=80?`radial-gradient(ellipse,rgba(255,80,0,0.9),rgba(255,0,0,0.7))`:dmg>=40?`rgba(255,160,0,0.8)`:`rgba(255,255,255,0.9)`);
+  el.style.setProperty('--sfo',Math.min(0.85,i*0.8));
+  el.style.animation='none'; el.offsetHeight; el.style.animation=`screenFlashAnim ${0.14+i*0.18}s ease forwards`;
+}
+function spawnRings(dmg,xr,yr){
+  const i=calcI(dmg); if(i<0.05) return;
+  const c=document.getElementById('rings'), f=document.getElementById('battleField');
+  const ex=f.offsetWidth*xr, ey=f.offsetHeight*yr, n=Math.floor(1+i*4);
+  for(let j=0;j<n;j++){
+    const r=document.createElement('div');
+    const sz=30+j*20, rs=1.5+i*3+j*0.8, col=j%2===0?`rgba(255,${Math.floor(200-i*150)},0,0.7)`:`rgba(255,255,100,0.5)`;
+    r.style.cssText=`position:absolute;left:${ex}px;top:${ey}px;width:${sz}px;height:${sz}px;border-radius:50%;border:${3+i*4}px solid ${col};--rs:${rs};animation:ringExpand ${0.4+j*0.1}s ease-out forwards;animation-delay:${j*0.06}s;pointer-events:none;`;
+    c.appendChild(r); setTimeout(()=>r.remove(),800+j*100);
+  }
+}
+function spawnParts(dmg,xr,yr){
+  const i=calcI(dmg), c=document.getElementById('particles'), f=document.getElementById('battleField');
+  const ex=f.offsetWidth*xr, ey=f.offsetHeight*yr, n=Math.min(120,Math.floor(Math.pow(dmg,1.15)*0.35));
+  const em=dmg>=100?['💥','⭐','✨','🌟','💫','🔥','⚡']:dmg>=50?['✨','⭐','💥','🔥']:['✨','⭐'];
+  const cols=['#FFD43B','#FF6B35','#FF6B6B','#4DABF7','#69DB7C','#CC5DE8','#F783AC','#fff','#FFE066'];
+  for(let k=0;k<n;k++){
+    const p=document.createElement('div'), a=(Math.random()*360)*(Math.PI/180);
+    const md=40+i*180, d=(0.3+Math.random()*0.7)*md, dx=Math.cos(a)*d, dy=Math.sin(a)*d-(20+i*40);
+    const dur=0.35+Math.random()*(0.3+i*0.4), delay=Math.random()*(0.05+i*0.12), pr=`${Math.floor(Math.random()*360)}deg`;
+    if(dmg>=50&&Math.random()<Math.min(0.5,i*0.4)){
+      p.style.cssText=`position:absolute;left:${ex}px;top:${ey}px;font-size:${0.8+Math.random()*(0.5+i*1.2)}rem;line-height:1;--dx:${dx}px;--dy:${dy}px;--pr:${pr};--ps:1;animation:particleFly ${dur}s ease-out forwards;animation-delay:${delay}s;pointer-events:none;z-index:21;`;
+      p.textContent=em[Math.floor(Math.random()*em.length)];
+    } else {
+      const sz=3+Math.random()*(4+i*10), col=cols[Math.floor(Math.random()*cols.length)];
+      p.style.cssText=`position:absolute;left:${ex}px;top:${ey}px;width:${sz}px;height:${sz}px;border-radius:${Math.random()<0.3?'2px':'50%'};background:${col};box-shadow:0 0 ${sz}px ${col};--dx:${dx}px;--dy:${dy}px;--pr:${pr};--ps:1;animation:particleFly ${dur}s ease-out forwards;animation-delay:${delay}s;pointer-events:none;z-index:21;`;
+    }
+    c.appendChild(p); setTimeout(()=>p.remove(),(dur+delay+0.1)*1000);
+  }
+  if(dmg>=60){ setTimeout(()=>{ const w2=Math.floor(i*25); for(let k=0;k<w2;k++){ const p2=document.createElement('div'), a2=(Math.random()*360)*(Math.PI/180), d2=60+Math.random()*i*150, dx2=Math.cos(a2)*d2, dy2=Math.sin(a2)*d2-30, s2=5+Math.random()*i*12, c2=cols[Math.floor(Math.random()*cols.length)]; p2.style.cssText=`position:absolute;left:${ex}px;top:${ey}px;width:${s2}px;height:${s2}px;border-radius:50%;background:${c2};box-shadow:0 0 ${s2*2}px ${c2};--dx:${dx2}px;--dy:${dy2}px;--pr:360deg;--ps:1;animation:particleFly ${0.5+Math.random()*0.5}s ease-out forwards;pointer-events:none;z-index:21;`; c.appendChild(p2); setTimeout(()=>p2.remove(),1200); } },180); }
+}
+
+// ===== LOG =====
+function addLog(msg,cls){ const list=document.getElementById('logList'), item=document.createElement('div'); item.className='log-item'+(cls?' '+cls:''); item.textContent=msg; list.prepend(item); while(list.children.length>8) list.removeChild(list.lastChild); }
+
+// ===== END =====
+function showVictory(){
+  const w=WEAPONS[selW];
+  document.getElementById('victoryMsg').textContent=`${ENEMIES[eIdx].name}をたおした！\nさいごの一撃：${w.baseAtk} × ${w.mult}倍 = ${w.baseAtk*w.mult} ダメージ\n倍率が高いほど強いこうげきができるね！`;
+  document.getElementById('victoryOverlay').classList.add('show');
+}
+function showGameOver(){
+  document.getElementById('gameoverMsg').textContent=`HPが0になってしまった…\nでも、倍率の使い方はわかったかな？\n強いぶきをうまく使って早めにたおそう！`;
+  document.getElementById('gameoverOverlay').classList.add('show');
+}
+function nextEnemy(){
+  document.getElementById('victoryOverlay').classList.remove('show');
+  eIdx=(eIdx+1)%ENEMIES.length; hHp=250; strongUses=5; weakAttackCount=0; selW=0; mult=1; isPlayerTurn=true; busy=false;
+  loadEnemy(); buildWeaponCards(); buildMultRow(); updateFormula(); updateTurnUI(); rollOracle();
+  document.getElementById('logList').innerHTML='';
+  addLog('⚡ 新しいてきがあらわれた！',false);
+}
+function resetGame(){
+  eIdx=0; hHp=250; strongUses=5; weakAttackCount=0; selW=0; mult=1; isPlayerTurn=true; busy=false;
+  loadEnemy(); buildWeaponCards(); buildMultRow(); updateFormula(); updateTurnUI(); rollOracle();
+  document.getElementById('logList').innerHTML='';
+  document.getElementById('victoryOverlay').classList.remove('show');
+  document.getElementById('gameoverOverlay').classList.remove('show');
+  addLog('⚡ ゲームをはじめます！',false);
+  // オープニングを再表示
+  var op = document.getElementById('opening');
+  if(op){
+    op.style.display = 'flex';
+    op.style.opacity = '1';
+    op.style.transition = '';
+    setTimeout(function(){
+      op.style.transition = 'opacity 0.6s';
+      op.style.opacity = '0';
+      setTimeout(function(){ op.style.display = 'none'; }, 650);
+    }, 2000);
+  }
+}
+
+init();
+addLog('⚡ 武器を選んでこうげきしよう！',false);
+</script>
+
+</body></html>
