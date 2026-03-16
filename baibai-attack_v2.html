@@ -273,7 +273,8 @@ body { background:var(--bg1); color:white; font-family:'Hiragino Sans','Helvetic
   <div class="weapon-row" id="weaponRow"></div>
   <div class="mult-label">⚡ 気合いの数を選ぼう <span style="font-size:0.7rem;color:#555">（倍率）</span></div>
   <div class="mult-row" id="multRow"></div>
-  <div class="formula-wrap" style="min-height:72px;display:flex;flex-direction:column;justify-content:center;">
+  <div class="formula-wrap" style="min-height:72px;display:flex;flex-direction:column;justify-content:center;position:relative;">
+    <button onclick="showHelp()" style="position:absolute;top:6px;right:8px;background:rgba(160,80,255,0.2);border:1px solid rgba(160,80,255,0.5);color:#b08ae0;border-radius:50%;width:22px;height:22px;font-size:0.75rem;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">？</button>
     <div class="formula-text">
       <span class="f-base" id="fBase">2</span>
       <span class="f-x">×</span>
@@ -292,6 +293,18 @@ body { background:var(--bg1); color:white; font-family:'Hiragino Sans','Helvetic
     </button>
   </div>
   <button class="btn-reset" onclick="resetGame()">🔄 最初からやり直す</button>
+</div>
+
+<!-- HELP MODAL -->
+<div id="helpModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#0d1117;border:2px solid rgba(160,80,255,0.5);border-radius:20px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto;padding:20px 16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-weight:900;font-size:1.1rem;color:#b08ae0;">📖 武器のチカラ一覧</div>
+      <button onclick="hideHelp()" style="background:rgba(255,255,255,0.1);border:none;color:#aaa;border-radius:50%;width:30px;height:30px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="font-size:0.75rem;color:#666;margin-bottom:16px;line-height:1.6;">神のお告げの数字を作れる<br>武器のチカラと気合いの組み合わせじゃ🧓</div>
+    <div id="helpTables"></div>
+  </div>
 </div>
 
 <!-- LOG -->
@@ -885,7 +898,38 @@ function showEnemyFormula(base,m,result){
 function showSpeech(t){ const b=document.getElementById('speechBubble'); b.textContent=t; b.style.animation='none'; b.offsetHeight; b.style.animation='bubbleShow 1.4s ease forwards'; }
 function showEnemySpeech(t){ const b=document.getElementById('enemySpeech'); b.textContent=t; b.style.animation='none'; b.offsetHeight; b.style.animation='bubbleShow 1.4s ease forwards'; }
 
-// ===== EFFECTS =====
+// ===== HELP MODAL =====
+function showHelp(){
+  const modal=document.getElementById('helpModal');
+  const tables=document.getElementById('helpTables');
+  // 掛け算表を動的生成
+  const defs=[
+    {icon:'🪵', name:'木の棒', atk:2, color:'#69DB7C', bg:'#0a1a0e', border:'#2b5c3a'},
+    {icon:'🪄', name:'魔法の杖', atk:3, color:'#4DABF7', bg:'#0a1020', border:'#1a4a7a'},
+    {icon:'⚡🗡️', name:'伝説の剣', atk:5, color:'#FF6B35', bg:'#1a0a00', border:'#7a2a00'},
+  ];
+  tables.innerHTML=defs.map(d=>`
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:1.4rem;">${d.icon}</span>
+        <span style="font-weight:900;font-size:0.9rem;color:${d.color};">${d.name}（チカラ：${d.atk}）</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">
+        ${Array.from({length:10},(_,i)=>{
+          const m=i+1, r=d.atk*m;
+          return `<div style="background:${d.bg};border:1px solid ${d.border};border-radius:8px;padding:5px 2px;text-align:center;">
+            <div style="font-size:0.6rem;color:#555;">${d.atk}×${m}</div>
+            <div style="font-weight:900;font-size:1rem;color:${d.color};">${r}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+  modal.style.display='flex';
+}
+function hideHelp(){
+  document.getElementById('helpModal').style.display='none';
+}
 function showAtkEffect(t, m){
   const el=document.getElementById('attackEffect'); el.textContent=t;
   const c={1:'#aaa',2:'#69DB7C',3:'#4DABF7',4:'#CC5DE8',5:'#FFD43B',6:'#FF9500',7:'#FF6B35',8:'#FF3333',9:'#FF0066',10:'#FF0000'};
