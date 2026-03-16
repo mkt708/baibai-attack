@@ -462,7 +462,7 @@ function updateFormula(){
   const wbadge=document.getElementById('wuses-weak');
   if(wbadge){
     const rate = Math.round(60 - (mult-1) * 5);
-    wbadge.textContent=`✨神の手助け ${rate}%`;
+    wbadge.textContent=`神降臨？ ${rate}%`;
     wbadge.className='weapon-uses '+(rate>=50?'full':rate>=30?'warn':'empty');
   }
   // ボタンラベルを「武器名 ○倍アタック！」に
@@ -773,8 +773,17 @@ function doPlayerAttack(){
     }
     if(eHp<=0){ busy=false; setTimeout(showVictory,800); return; }
     busy=false; updateFormula(); updateWeaponBadge();
-    if(turnMode){ isPlayerTurn=false; updateTurnUI(); setTimeout(doEnemyAttack,800); }
-    else { updateTurnUI(); }
+    if(turnMode){
+      isPlayerTurn=false;
+      // 敵ターン表示：神の手あり→3.5秒後、お告げ一致→2.5秒後、通常→1.2秒後
+      const toastDelay = isGodHand ? 2500 : isOracleHit ? 2500 : 1200;
+      setTimeout(()=>{
+        updateTurnUI(); // 「てきのターン…」ウェイティング表示
+        showTurnToast(false);
+        // ワンテンポ置いてから攻撃開始
+        setTimeout(doEnemyAttack, 1200);
+      }, toastDelay);
+    } else { updateTurnUI(); }
   }, logDelay);
 }
 
