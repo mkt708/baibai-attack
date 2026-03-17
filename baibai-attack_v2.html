@@ -351,9 +351,9 @@ const MULT_HINTS = {
   10:"10倍！究極の出力！！",
 };
 const ENEMIES = [
-  { name:"👹 ラスボス",    emoji:"👹", hp:500,  size:"4.5rem", eBase:8,  eMin:1, eMax:2 },
-  { name:"🐉 ドラゴン",    emoji:"🐉", hp:900,  size:"5rem",   eBase:10, eMin:2, eMax:3 },
-  { name:"👾 ダークキング", emoji:"👾", hp:1400, size:"5.5rem", eBase:12, eMin:3, eMax:4 },
+  { name:"👹 ラスボス",    emoji:"👹", hp:400,  size:"4.5rem", eBase:8,  eMin:1, eMax:2 },
+  { name:"🐉 ドラゴン",    emoji:"🐉", hp:500,  size:"5rem",   eBase:10, eMin:2, eMax:3 },
+  { name:"👾 ダークキング", emoji:"👾", hp:700,  size:"5.5rem", eBase:12, eMin:3, eMax:4 },
 ];
 const ENEMY_PHRASES = [
   ["ふんっ！","くらえ！"],["2倍だ！","2倍こうげき！"],["3倍！ははは！","3倍の力！"],
@@ -580,14 +580,14 @@ function dismissOraclePanel(){
 function resolveOracle(isHit, bonusDmg){
   if(!oracleMode) return;
   if(isHit){
-    // 緑フラッシュ
     const fl=document.getElementById('oracleFlash');
     fl.style.animation='none'; fl.offsetHeight;
     fl.style.animation='oracleFlashAnim 0.8s ease forwards';
-    // ニコニコ絵文字をdmgNumberと同じふわっとアニメで飛ばす
     spawnSmileEmojis();
   }
-  // 次のお告げを少し後に表示
+  // 交代バトル中は攻撃後に再表示しない（敵ターン終了後にdoEnemyAttack側で表示）
+  if(turnMode) return;
+  // 非交代モードのみ次のお告げを表示
   setTimeout(()=>{
     const n=document.getElementById('oracleNum');
     if(n){ n.style.fontSize=''; n.className=''; }
@@ -673,24 +673,27 @@ function doPlayerAttack(){
 
   // ===== 神のお告げ ぴったりボーナス =====
   const isOracleHit = (baseDmg === oracleVal);
-  const oracleBonusDmg = isOracleHit ? Math.round(baseDmg * 0.1) : 0;
+  // お告げ一致：固定+20ダメージ（倍率に関わらず一定の価値）
+  const oracleBonusDmg = isOracleHit ? 20 : 0;
 
   // 強ぶき使用カウント（神のお告げモード中は無制限）
   if(selW===2 && !oracleMode){ strongUses--; updateWeaponBadge(); if(strongUses<=0) selW=0; }
 
-  // ===== 木の棒：神の手チェック（低倍率ほど高確率） =====
+  // ===== 木の棒：神降臨チェック（低倍率ほど高確率） =====
   // mult=1→60%, mult=3→45%, mult=5→33%, mult=7→22%, mult=10→15%
   let godBonus=0, isGodHand=false;
   if(selW===0){
     const godRate = Math.round(60 - (mult-1) * 5) / 100;
     isGodHand = Math.random() < godRate;
     if(isGodHand){
-      // 最大武器ダメージ(5×10=50)を超えられるよう上限を引き上げ
-      // mult=1: 40〜100, mult=5: 20〜70, mult=10: 8〜40
-      const maxBonus = Math.round(100 - (mult-1)*6.5);
-      const minBonus = Math.round(40  - (mult-1)*3.5);
-      const bias = Math.max(0.5, 3.0 - (mult-1)*0.28);
+      // 上限を抑えめに（最大40）。低倍率ほど大きい値が出やすい
+      // mult=1: 15〜40, mult=5: 8〜25, mult=10: 3〜15
+      const maxBonus = Math.round(40 - (mult-1)*2.8);
+      const minBonus = Math.round(15 - (mult-1)*1.3);
+      const bias = Math.max(0.5, 2.5 - (mult-1)*0.22);
       godBonus = weightedRandom(minBonus, maxBonus, bias);
+      // お告げ一致とダブル発動時は神降臨ボーナスが2倍！
+      if(isOracleHit) godBonus = godBonus * 2;
     }
   }
 
@@ -763,11 +766,11 @@ function doPlayerAttack(){
   const logDelay = isGodHand ? 2000 : 1060;
   setTimeout(()=>{
     if(isGodHand && isOracleHit){
-      addLog(`${w.icon} ${w.baseAtk}×${mult}倍＝${baseDmg} ＋神の手助け+${godBonus} ＋お告げ+${oracleBonusDmg} ＝ 合計${totalDmg}！`,'hero-log');
+      addLog(`🪵 木の棒 ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ ✨神降臨×2(+${godBonus}) ＋ お告げ+${oracleBonusDmg} ＝ 合計${totalDmg}！`,'hero-log');
     } else if(isGodHand){
-      addLog(`🪵 木の棒 ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ ✨神の手助け+${godBonus} ＝ 合計${totalDmg}ダメージ！`,'hero-log');
+      addLog(`🪵 木の棒 ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ ✨神降臨+${godBonus} ＝ 合計${totalDmg}ダメージ！`,'hero-log');
     } else if(isOracleHit){
-      addLog(`${w.icon} ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ 🎉お告げ達成+${oracleBonusDmg} ＝ 合計${totalDmg}ダメージ！`,'hero-log');
+      addLog(`${w.icon} ${w.baseAtk}×${mult}倍＝${baseDmg} ＋ 🎉お告げ+${oracleBonusDmg} ＝ 合計${totalDmg}ダメージ！`,'hero-log');
     } else {
       addLog(`${w.icon} ${w.baseAtk} × ${mult}倍 ＝ ${baseDmg} ダメージ！`,'hero-log');
     }
@@ -863,6 +866,8 @@ function showGodHandEffect(bonus, m){
 function doEnemyAttack(){
   if(hHp<=0||eHp<=0) return;
   busy=true;
+  // 敵ターン中はお告げを非表示
+  if(oracleMode) hideOraclePanel(true);
   const e=ENEMIES[eIdx];
   const eMult=e.eMin+Math.floor(Math.random()*(e.eMax-e.eMin+1));
   const eDmg=e.eBase*eMult;
@@ -886,9 +891,12 @@ function doEnemyAttack(){
     if(hHp<=0){ busy=false; setTimeout(showGameOver,600); return; }
     busy=false;
   },1800);
-  // ターン表示は計算式が消えた後（1550+3200=4750ms）
+  // 計算式が消えた後（4800ms）：プレイヤーターンに戻し、お告げを新たに表示
   setTimeout(()=>{
-    if(hHp>0){ isPlayerTurn=true; updateTurnUI(); }
+    if(hHp>0){
+      isPlayerTurn=true; updateTurnUI();
+      if(oracleMode) rollOracle();
+    }
   },4800);
 }
 
